@@ -292,6 +292,8 @@ def handle_response_model(
             else:
                 new_kwargs["messages"][0]["content"] += f"\n\n{message}"
         elif mode == Mode.ANTHROPIC_TOOLS:
+            if not response_model:
+                response_model = str
             tool_descriptions = response_model.anthropic_schema
             new_kwargs["tools"] = [tool_descriptions]
             new_kwargs["tool_choice"] = {
