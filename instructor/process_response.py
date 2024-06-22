@@ -8,6 +8,11 @@ from instructor.dsl.parallel import ParallelBase, ParallelModel, handle_parallel
 from instructor.dsl.partial import PartialBase
 from instructor.dsl.simple_type import AdapterBase, ModelAdapter, is_simple_type
 from instructor.function_calls import OpenAISchema, openai_schema
+from instructor.helpers.message_helpers import (
+    Role,
+    get_content_from_message,
+    get_role_from_message,
+)
 from instructor.utils import merge_consecutive_messages
 from openai.types.chat import ChatCompletion
 from pydantic import BaseModel
@@ -293,27 +298,29 @@ def handle_response_model(
             }
 
             system_messages = [
-                m["content"] for m in new_kwargs["messages"] if m["role"] == "system"
+                message
+                for message in new_kwargs["messages"]
+                if get_role_from_message(message) == Role.SYSTEM
             ]
-            new_kwargs["system"] = "\n\n".join(system_messages)
+            system_messages_content = [
+                get_content_from_message(message) for message in system_messages
+            ]
+            new_kwargs["system"] = "\n\n".join(system_messages_content)
             new_kwargs["messages"] = [
                 m for m in new_kwargs["messages"] if m["role"] != "system"
             ]
 
         elif mode == Mode.ANTHROPIC_JSON:
             # anthropic wants system message to be a string so we first extract out any system message
-            openai_system_messages = [
-                message["content"]
-                for message in new_kwargs.get("messages", [])
-                if message["role"] == "system"
+            system_messages = [
+                message
+                for message in new_kwargs["messages"]
+                if get_role_from_message(message) == Role.SYSTEM
             ]
-
-            new_kwargs["system"] = (
-                new_kwargs.get("system", "")
-                + "\n\n"
-                + "\n\n".join(openai_system_messages)
-            )
-
+            system_messages_content = [
+                get_content_from_message(message) for message in system_messages
+            ]
+            new_kwargs["system"] = "\n\n".join(system_messages_content)
             new_kwargs["system"] += f"""
             You must only response in JSON format that adheres to the following schema:
 
