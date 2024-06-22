@@ -7,6 +7,13 @@ from instructor import Mode
 import pytest
 import instructor
 
+## load in env
+from dotenv import load_dotenv
+
+load_dotenv()
+import os
+## load os
+
 
 class Weather(BaseModel):
     location: str
