@@ -10,6 +10,7 @@ from typing import (
 from collections.abc import Generator
 from pydantic import BaseModel
 from instructor.function_calls import OpenAISchema, openai_schema
+from openai.types.chat.chat_completion_message import ChatCompletionMessage
 from collections.abc import Iterable
 
 from instructor.mode import Mode
@@ -33,12 +34,18 @@ class ParallelBase:
         mode: Mode,
         validation_context: Optional[Any] = None,
         strict: Optional[bool] = None,
-    ) -> Generator[BaseModel, None, None]:
+    ) -> Generator[Union[BaseModel, str], None, None]:
         #! We expect this from the OpenAISchema class, We should address
         #! this with a protocol or an abstract class... @jxnlco
         assert mode == Mode.PARALLEL_TOOLS, "Mode must be PARALLEL_TOOLS"
-        for tool_call in response.choices[0].message.tool_calls:
+        message: ChatCompletionMessage = response.choices[0].message
+        if message.content:
+            yield message.content  # Yield the message content as a string
+        if not message.tool_calls:
+            return
+        for tool_call in message.tool_calls:
             name = tool_call.function.name
+            tool_id = tool_call.id
             arguments = tool_call.function.arguments
             yield self.registry[name].model_validate_json(
                 arguments, context=validation_context, strict=strict
