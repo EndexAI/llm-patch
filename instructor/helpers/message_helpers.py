@@ -14,6 +14,21 @@ Message = Union[  # noqa: UP007 -- One of these types does not support the `|` o
 ]
 
 
+class ProviderMessageFormat(str, Enum):
+    """
+    Enum representing the format of a message for a provider.
+
+    Attributes:
+        OPENAI: Represents the message format for OpenAI.
+        ANTHROPIC: Represents the message format for Anthropic.
+        COHERE: Represents the message format for Cohere.
+    """
+
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+    COHERE = "cohere"
+
+
 class Role(str, Enum):
     """
     Enum representing the role of a message within a conversation or system interaction.
@@ -32,9 +47,14 @@ class Role(str, Enum):
 
 
 def get_role_from_message(message: Message) -> Role | None:
-    ## check if not basemodel or dict return none
-    if not isinstance(message, (dict, BaseModel)):
+    ## check if not basemodel, dict or list of dicts return none
+    if not isinstance(message, (dict, BaseModel, list)):
         return None
+    if isinstance(message, list):
+        if all(isinstance(item, dict) for item in message):
+            return message[0].get("role", None) if message else None
+        else:
+            return None
     message_data = message.model_dump() if isinstance(message, BaseModel) else message
     return message_data.get("role", None)
 
@@ -56,3 +76,31 @@ def get_content_from_message(message: Message | None) -> str | None:
             return combined
     message_data = message.model_dump() if isinstance(message, BaseModel) else message
     return message_data.get("content", None)
+
+
+def turn_into_message_dicts(
+    messages: list[Message], format: ProviderMessageFormat | None = None
+) -> list[dict[str, Any]]:
+    message_dict_list: list[dict[str, Any]] = []
+    for message in messages:
+        if isinstance(message, ChatCompletionMessage):
+            ## if anthropic only get role and content
+            if format == ProviderMessageFormat.ANTHROPIC:
+                message_dict_list.append(
+                    {"role": message.role, "content": message.content}
+                )
+            else:
+                message_dict_list.append(message.model_dump())
+        elif isinstance(message, str):
+            message_dict_list.append({"role": "user", "content": message})
+        elif isinstance(message, (dict, TypedDict)):  # Changed this line
+            message_dict_list.append(message)
+        elif isinstance(message, list) and all(
+            isinstance(item, dict) for item in message
+        ):
+            message_dict_list.extend(message)
+        elif isinstance(message, BaseModel):
+            message_dict_list.append(message.model_dump())
+        else:
+            raise ValueError(f"Unsupported message type: {type(message)}")
+    return message_dict_list

@@ -9,9 +9,11 @@ from instructor.dsl.partial import PartialBase
 from instructor.dsl.simple_type import AdapterBase, ModelAdapter, is_simple_type
 from instructor.function_calls import OpenAISchema, openai_schema
 from instructor.helpers.message_helpers import (
+    ProviderMessageFormat,
     Role,
     get_content_from_message,
     get_role_from_message,
+    turn_into_message_dicts,
 )
 from instructor.utils import merge_consecutive_messages
 from openai.types.chat import ChatCompletion
@@ -306,9 +308,15 @@ def handle_response_model(
                 get_content_from_message(message) for message in system_messages
             ]
             new_kwargs["system"] = "\n\n".join(system_messages_content)
-            new_kwargs["messages"] = [
-                m for m in new_kwargs["messages"] if m["role"] != "system"
+            non_system_messages = [
+                m
+                for m in new_kwargs["messages"]
+                if get_role_from_message(m) != Role.SYSTEM
             ]
+            message_list = turn_into_message_dicts(
+                non_system_messages, format=ProviderMessageFormat.ANTHROPIC
+            )
+            new_kwargs["messages"] = message_list
 
         elif mode == Mode.ANTHROPIC_JSON:
             # anthropic wants system message to be a string so we first extract out any system message
