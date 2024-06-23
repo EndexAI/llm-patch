@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, create_model  # type: ignore - remove onc
 from instructor.function_calls import OpenAISchema
 from instructor.mode import Mode
 from instructor.utils import extract_json_from_stream, extract_json_from_stream_async
+from devtools import debug
 
 
 class IterableBase:
@@ -15,6 +16,7 @@ class IterableBase:
     def from_streaming_response(
         cls, completion: Iterable[Any], mode: Mode, **kwargs: Any
     ) -> Generator[BaseModel, None, None]:  # noqa: ARG003
+        debug("in here")
         json_chunks = cls.extract_json(completion, mode)
 
         if mode == Mode.MD_JSON:
@@ -26,6 +28,7 @@ class IterableBase:
     async def from_streaming_response_async(
         cls, completion: AsyncGenerator[Any, None], mode: Mode, **kwargs: Any
     ) -> AsyncGenerator[BaseModel, None]:
+        debug("in here")
         json_chunks = cls.extract_json_async(completion, mode)
 
         if mode == Mode.MD_JSON:
@@ -37,6 +40,7 @@ class IterableBase:
     def tasks_from_chunks(
         cls, json_chunks: Iterable[str], **kwargs: Any
     ) -> Generator[BaseModel, None, None]:
+        debug("in here")
         started = False
         potential_object = ""
         for chunk in json_chunks:
@@ -57,6 +61,7 @@ class IterableBase:
     async def tasks_from_chunks_async(
         cls, json_chunks: AsyncGenerator[str, None], **kwargs: Any
     ) -> AsyncGenerator[BaseModel, None]:
+        debug("in here")
         started = False
         potential_object = ""
         async for chunk in json_chunks:
@@ -77,6 +82,7 @@ class IterableBase:
     def extract_json(
         completion: Iterable[Any], mode: Mode
     ) -> Generator[str, None, None]:
+        debug("in here")
         for chunk in completion:
             try:
                 if mode == Mode.ANTHROPIC_JSON:
@@ -107,6 +113,7 @@ class IterableBase:
     async def extract_json_async(
         completion: AsyncGenerator[Any, None], mode: Mode
     ) -> AsyncGenerator[str, None]:
+        debug("in here")
         async for chunk in completion:
             try:
                 if mode == Mode.ANTHROPIC_JSON:
@@ -133,6 +140,7 @@ class IterableBase:
 
     @staticmethod
     def get_object(s: str, stack: int) -> tuple[Optional[str], str]:
+        debug("in here")
         start_index = s.find("{")
         for i, c in enumerate(s):
             if c == "{":
@@ -149,6 +157,7 @@ def IterableModel(
     name: Optional[str] = None,
     description: Optional[str] = None,
 ) -> type[BaseModel]:
+    debug("in here")
     """
     Dynamically create a IterableModel OpenAISchema that can be used to segment multiple
     tasks given a base class. This creates class that can be used to create a toolkit
