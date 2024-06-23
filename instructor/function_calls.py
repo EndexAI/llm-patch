@@ -3,6 +3,7 @@ import json
 import logging
 from functools import wraps
 from typing import Annotated, Any, Optional, TypeVar, cast
+from devtools import debug
 
 from docstring_parser import parse
 from openai.types.chat import ChatCompletion
@@ -133,12 +134,13 @@ class OpenAISchema(BaseModel):
         validation_context: Optional[dict[str, Any]] = None,
         strict: Optional[bool] = None,
     ) -> BaseModel:
+        debug(completion)
         tool_calls = [c.input for c in completion.content if c.type == "tool_use"]  # type: ignore - TODO update with anthropic specific types
-
         tool_calls_validator = TypeAdapter(
             Annotated[list[Any], Field(min_length=1, max_length=1)]
         )
         tool_call = tool_calls_validator.validate_python(tool_calls)[0]
+        debug(tool_call)
 
         return cls.model_validate(tool_call, context=validation_context, strict=strict)
 
