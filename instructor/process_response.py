@@ -303,7 +303,7 @@ def handle_response_model(
 
             system_messages = [
                 message
-                for message in new_kwargs["messages"]
+                for message in new_kwargs.get("messages", [])
                 if get_role_from_message(message) == Role.SYSTEM
             ]
             system_messages_content: list[str] = [
@@ -314,7 +314,7 @@ def handle_response_model(
 
             non_system_messages = [
                 m
-                for m in new_kwargs["messages"]
+                for m in new_kwargs.get("messages", [])
                 if get_role_from_message(m) != Role.SYSTEM
             ]
             message_list = turn_into_message_dicts(
@@ -326,7 +326,7 @@ def handle_response_model(
             # anthropic wants system message to be a string so we first extract out any system message
             system_messages = [
                 message
-                for message in new_kwargs["messages"]
+                for message in new_kwargs.get("messages", [])
                 if get_role_from_message(message) == Role.SYSTEM
             ]
             system_messages_content = [
