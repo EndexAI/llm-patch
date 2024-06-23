@@ -26,6 +26,7 @@ class IterableBase:
     async def from_streaming_response_async(
         cls, completion: AsyncGenerator[Any, None], mode: Mode, **kwargs: Any
     ) -> AsyncGenerator[BaseModel, None]:
+        print("in here")
         json_chunks = cls.extract_json_async(completion, mode)
 
         if mode == Mode.MD_JSON:
