@@ -7,6 +7,7 @@ from devtools import debug
 
 from docstring_parser import parse
 from openai.types.chat import ChatCompletion
+from anthropic.types import ToolParam
 from openai.types.shared_params import FunctionDefinition
 from pydantic import (
     BaseModel,
@@ -27,6 +28,67 @@ T = TypeVar("T")
 logger = logging.getLogger("instructor")
 
 
+def get_description(base_model_class: type[BaseModel]) -> str:
+    """
+        Returns the class docstring or the description attribute if it exists.
+    """
+    if base_model_class.__dict__.get("model_fields", {}).get("description"):
+        description_base_model: FieldInfo | None = base_model_class.__dict__.get(
+            "model_fields", {}
+            ).get("description")
+            if (
+                description_base_model
+                and description_base_model.default is not PydanticUndefined
+            ):
+                return description_base_model.default
+        if base_model_class.__doc__:
+            return base_model_class.__doc__
+        else:
+            return (
+                f"Correctly extracted `{base_model_class.__name__}` with all "
+                f"the required parameters with correct types"
+            )
+        
+def get_name(base_model_class: type[BaseModel]) -> str:
+    """
+        Returns the name of the tool, either from the 'name' attribute or the class name.
+    """
+    """
+        Returns the name of the tool, either from the 'name' attribute or the class name.
+        """
+        if base_model_class.__dict__.get("model_fields", {}).get("name"):
+            # description_base_model: FieldInfo = cls.__dict__.get(
+            #     "model_fields", {}
+            # ).get("name")
+
+            description_base_model: FieldInfo | None = base_model_class.__dict__.get(
+                "model_fields", {}
+            ).get("name")
+
+            if (
+                description_base_model
+                and description_base_model.default is not PydanticUndefined
+            ):
+            return description_base_model.default
+    return base_model_class.__name__
+
+def get_parameters(base_model_class: type[BaseModel]) -> dict[str, Any]:
+    schema = base_model_class.model_json_schema()
+    docstring = parse(base_model_class.__doc__ or "")
+    parameters = {
+        k: v for k, v in schema.items() if k not in ("title", "description")
+        }
+        for param in docstring.params:
+            if (name := param.arg_name) in parameters["properties"] and (
+                description := param.description
+            ):
+                if "description" not in parameters["properties"][name]:
+                    parameters["properties"][name]["description"] = description
+
+        parameters["required"] = sorted(
+            k for k, v in parameters["properties"].items() if "default" not in v
+        )
+        return parameters
 class OpenAISchema(BaseModel):
     # Ignore classproperty, since Pydantic doesn't understand it like it would a normal property.
     model_config = ConfigDict(ignored_types=(classproperty,))
@@ -53,7 +115,7 @@ class OpenAISchema(BaseModel):
         return cls.__name__
 
     @classmethod
-    def get_description(cls) -> str | None:
+    def get_description(cls) -> str:
         """
         Returns the class docstring or the description attribute if it exists.
         """
@@ -79,20 +141,11 @@ class OpenAISchema(BaseModel):
         return cls.get_name()
 
     @classproperty
-    def model_description(cls) -> str | None:
+    def model_description(cls) -> str:
         return cls.get_description()
 
     @classproperty
-    def openai_schema(cls) -> dict[str, Any]:
-        """
-        Return the schema in the format of OpenAI's schema as jsonschema
-
-        Note:
-            Its important to add a docstring to describe how to best use this class, it will be included in the description attribute and be part of the prompt.
-
-        Returns:
-            model_json_schema (dict): A dictionary in the format of OpenAI's schema as jsonschema
-        """
+    def parameters(cls) -> dict[str, Any]:
         schema = cls.model_json_schema()
         description = cls.model_description
         docstring = parse(cls.__doc__ or "")
@@ -109,16 +162,20 @@ class OpenAISchema(BaseModel):
         parameters["required"] = sorted(
             k for k, v in parameters["properties"].items() if "default" not in v
         )
+        return parameters
 
-        if "description" not in schema:
-            if docstring.short_description:
-                schema["description"] = docstring.short_description
-            else:
-                schema["description"] = (
-                    f"Correctly extracted `{cls.__name__}` with all "
-                    f"the required parameters with correct types"
-                )
+    @classproperty
+    def openai_schema(cls) -> FunctionDefinition:
+        """
+        Return the schema in the format of OpenAI's schema as jsonschema
 
+        Note:
+            Its important to add a docstring to describe how to best use this class, it will be included in the description attribute and be part of the prompt.
+
+        Returns:
+            model_json_schema (dict): A dictionary in the format of OpenAI's schema as jsonschema
+        """
+        parameters = cls.parameters
         openai_function_definition = FunctionDefinition(
             name=cls.model_name,
             description=cls.model_description,
@@ -127,11 +184,11 @@ class OpenAISchema(BaseModel):
         return openai_function_definition
 
     @classproperty
-    def anthropic_schema(cls) -> dict[str, Any]:
+    def anthropic_schema(cls) -> ToolParam:
         return {
             "name": cls.model_name,
             "description": cls.model_description,
-            "input_schema": cls.model_json_schema(),
+            "input_schema": cls.parameters,
         }
 
     @classmethod
