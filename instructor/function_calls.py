@@ -77,18 +77,18 @@ def get_parameters(base_model_class: type[BaseModel]) -> dict[str, Any]:
     docstring = parse(base_model_class.__doc__ or "")
     parameters = {
         k: v for k, v in schema.items() if k not in ("title", "description")
-        }
-        for param in docstring.params:
-            if (name := param.arg_name) in parameters["properties"] and (
-                description := param.description
-            ):
-                if "description" not in parameters["properties"][name]:
-                    parameters["properties"][name]["description"] = description
+    }
+    for param in docstring.params:
+        if (name := param.arg_name) in parameters["properties"] and (
+            description := param.description
+        ):
+            if "description" not in parameters["properties"][name]:
+                parameters["properties"][name]["description"] = description
 
-        parameters["required"] = sorted(
-            k for k, v in parameters["properties"].items() if "default" not in v
-        )
-        return parameters
+    parameters["required"] = sorted(
+        k for k, v in parameters["properties"].items() if "default" not in v
+    )
+    return parameters
 class OpenAISchema(BaseModel):
     # Ignore classproperty, since Pydantic doesn't understand it like it would a normal property.
     model_config = ConfigDict(ignored_types=(classproperty,))
