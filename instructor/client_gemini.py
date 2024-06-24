@@ -14,7 +14,8 @@ def from_gemini(
     mode: instructor.Mode = instructor.Mode.GEMINI_JSON,
     use_async: Literal[True] = True,
     **kwargs: Any,
-) -> instructor.AsyncInstructor: ...
+) -> instructor.AsyncInstructor:
+    ...
 
 
 @overload
@@ -23,7 +24,8 @@ def from_gemini(
     mode: instructor.Mode = instructor.Mode.GEMINI_JSON,
     use_async: Literal[False] = False,
     **kwargs: Any,
-) -> instructor.Instructor: ...
+) -> instructor.Instructor:
+    ...
 
 
 def from_gemini(

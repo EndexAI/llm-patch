@@ -30,54 +30,46 @@ logger = logging.getLogger("instructor")
 
 def get_description(base_model_class: type[BaseModel]) -> str:
     """
-        Returns the class docstring or the description attribute if it exists.
+    Returns the class docstring or the description attribute if it exists.
     """
     if base_model_class.__dict__.get("model_fields", {}).get("description"):
         description_base_model: FieldInfo | None = base_model_class.__dict__.get(
             "model_fields", {}
-            ).get("description")
-            if (
-                description_base_model
-                and description_base_model.default is not PydanticUndefined
-            ):
-                return description_base_model.default
-        if base_model_class.__doc__:
-            return base_model_class.__doc__
-        else:
-            return (
-                f"Correctly extracted `{base_model_class.__name__}` with all "
-                f"the required parameters with correct types"
-            )
-        
+        ).get("description")
+        if (
+            description_base_model
+            and description_base_model.default is not PydanticUndefined
+        ):
+            return description_base_model.default
+    if base_model_class.__doc__:
+        return base_model_class.__doc__
+    else:
+        return (
+            f"Correctly extracted `{base_model_class.__name__}` with all "
+            f"the required parameters with correct types"
+        )
+
+
 def get_name(base_model_class: type[BaseModel]) -> str:
     """
-        Returns the name of the tool, either from the 'name' attribute or the class name.
+    Returns the name of the tool, either from the 'name' attribute or the class name.
     """
-    """
-        Returns the name of the tool, either from the 'name' attribute or the class name.
-        """
-        if base_model_class.__dict__.get("model_fields", {}).get("name"):
-            # description_base_model: FieldInfo = cls.__dict__.get(
-            #     "model_fields", {}
-            # ).get("name")
-
-            description_base_model: FieldInfo | None = base_model_class.__dict__.get(
-                "model_fields", {}
-            ).get("name")
-
-            if (
-                description_base_model
-                and description_base_model.default is not PydanticUndefined
-            ):
+    if base_model_class.__dict__.get("model_fields", {}).get("name"):
+        description_base_model: FieldInfo | None = base_model_class.__dict__.get(
+            "model_fields", {}
+        ).get("name")
+        if (
+            description_base_model
+            and description_base_model.default is not PydanticUndefined
+        ):
             return description_base_model.default
     return base_model_class.__name__
+
 
 def get_parameters(base_model_class: type[BaseModel]) -> dict[str, Any]:
     schema = base_model_class.model_json_schema()
     docstring = parse(base_model_class.__doc__ or "")
-    parameters = {
-        k: v for k, v in schema.items() if k not in ("title", "description")
-    }
+    parameters = {k: v for k, v in schema.items() if k not in ("title", "description")}
     for param in docstring.params:
         if (name := param.arg_name) in parameters["properties"] and (
             description := param.description
@@ -89,6 +81,8 @@ def get_parameters(base_model_class: type[BaseModel]) -> dict[str, Any]:
         k for k, v in parameters["properties"].items() if "default" not in v
     )
     return parameters
+
+
 class OpenAISchema(BaseModel):
     # Ignore classproperty, since Pydantic doesn't understand it like it would a normal property.
     model_config = ConfigDict(ignored_types=(classproperty,))
